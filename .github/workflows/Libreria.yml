@@ -1,0 +1,61 @@
+name: Ejecutor de Web Diario
+
+# 1. CUÁNDO SE EJECUTA
+on:
+  schedule:
+    - cron: '0 05 * * *'  # Se ejecuta todos los días a las 5:00 AM UTC
+  workflow_dispatch:      # Permite activar el script manualmente
+
+# 2. PERMISOS PARA GUARDAR EL CSV EN EL REPOSITORIO
+permissions:
+  contents: write
+
+# 3. QUÉ HACE LA MÁQUINA VIRTUAL
+jobs:
+  job_scraping:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Paso A: Descargar nuestro código del repositorio
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      # Paso B: Instalar Python en la máquina virtual
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # Paso C: Instalar las librerías necesarias
+      # Deben coincidir con las utilizadas en Google Colab
+      - name: Instalar librerías
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 pandas
+
+      # Paso D: Ejecutar el script de extracción de frases
+      - name: Ejecutar script de Web Scraping
+        run: python scraper_frases.py
+
+      # Paso E: Verificar que se haya generado el archivo CSV
+      - name: Verificar archivo generado
+        run: |
+          if [ -f "catalogo_frases.csv" ]; then
+            echo "✅ El archivo catalogo_frases.csv fue generado correctamente."
+          else
+            echo "❌ No se encontró el archivo catalogo_frases.csv."
+            exit 1
+          fi
+
+      # Paso F: Guardar y subir el archivo CSV al repositorio
+      - name: Guardar cambios en GitHub
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          git add catalogo_frases.csv
+
+          git commit -m "Actualización automática del catálogo de frases" || exit 0
+
+          git push
